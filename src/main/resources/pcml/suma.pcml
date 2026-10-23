@@ -1,0 +1,13 @@
+<pcml version="4.0">
+   <!-- Define la ruta absoluta del programa ejecutable en tu AS400 -->
+   <program name="suma" path="/QSYS.LIB/SDSANTISH1.LIB/SUMA.PGM">
+
+      <!-- Números a sumar: decimal empaquetado de 15 dígitos con 5 decimales -->
+      <data name="num1" type="packed" length="15" precision="5" usage="input"/>
+      <data name="num2" type="packed" length="15" precision="5" usage="input"/>
+
+      <!-- Parámetro de salida con el resultado de la suma -->
+      <data name="result" type="packed" length="15" precision="5" usage="output"/>
+
+   </program>
+</pcml>

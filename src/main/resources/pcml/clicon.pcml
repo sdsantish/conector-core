@@ -1,0 +1,20 @@
+<pcml version="4.0">
+   <!-- cliente_t de CLICON: 4 + 30 + 20 + 19 = 73 bytes por registro -->
+   <struct name="cliente">
+      <data name="id"        type="int"  length="4" precision="31"/>
+      <data name="nombre"    type="char" length="30"/>
+      <data name="ciudad"    type="char" length="20"/>
+      <data name="fechaAlta" type="char" length="19"/>
+   </struct>
+
+   <!-- Consulta de clientes por ciudad en SDSANTISH1.CLIENTES -->
+   <program name="clicon" path="/QSYS.LIB/SDSANTISH1.LIB/CLICON.PGM">
+      <data name="ciudad"   type="char" length="20" usage="input"/>
+
+      <data name="cantidad" type="int"  length="4" precision="31" usage="output"/>
+      <!-- El RPG reserva 50 registros (73 x 50 = 3650 bytes); solo se leen los que indica cantidad -->
+      <data name="clientes" type="struct" struct="cliente" count="cantidad" outputsize="3650" usage="output"/>
+      <data name="status"   type="char" length="10" usage="output"/>
+      <data name="msg"      type="char" length="50" usage="output"/>
+   </program>
+</pcml>

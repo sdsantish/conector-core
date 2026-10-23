@@ -1,0 +1,11 @@
+<pcml version="4.0">
+   <!-- Alta de un cliente en SDSANTISH1.CLIENTES -->
+   <program name="cliins" path="/QSYS.LIB/SDSANTISH1.LIB/CLIINS.PGM">
+      <data name="nombre" type="char" length="30" usage="input"/>
+      <data name="ciudad" type="char" length="20" usage="input"/>
+
+      <data name="id"     type="int"  length="4" precision="31" usage="output"/>
+      <data name="status" type="char" length="10" usage="output"/>
+      <data name="msg"    type="char" length="50" usage="output"/>
+   </program>
+</pcml>

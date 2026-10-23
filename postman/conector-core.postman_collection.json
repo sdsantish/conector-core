@@ -1,0 +1,1003 @@
+{
+  "info": {
+    "name": "conector-core",
+    "description": "Casos de prueba de POST /programa. Ver README.md. Las carpetas de programas necesitan los programas creados en el AS400 (guide-local.md); 'Errores de validación' funciona sin AS400.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "SALUDO (CL)",
+      "description": "Programa CL con texto de entrada y salida. PCML: saludo.pcml",
+      "item": [
+        {
+          "name": "Saludar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Devuelve HOLA CARLOS\", () => pm.expect(pm.response.json().resultado.msg).to.eql(\"HOLA CARLOS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "Llama a SDSANTISH1/SALUDO y devuelve el mensaje armado por el programa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"saludo\",\n  \"parametros\": {\n    \"name\": \"CARLOS\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SUMA (CL)",
+      "description": "Programa CL con decimales packed(15,5). PCML: suma.pcml",
+      "item": [
+        {
+          "name": "Sumar decimales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"10.5 + 4.25 = 14.75\", () => pm.expect(Number(pm.response.json().resultado.result)).to.eql(14.75));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"suma\",\n  \"parametros\": {\n    \"num1\": 10.5,\n    \"num2\": 4.25\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sumar negativos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"-3 + 1.5 = -1.5\", () => pm.expect(Number(pm.response.json().resultado.result)).to.eql(-1.5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"suma\",\n  \"parametros\": {\n    \"num1\": -3,\n    \"num2\": 1.5\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "PRUEBAPCML (RPG)",
+      "description": "Programa RPG con estructuras y arreglos dim(5). PCML generado por el compilador: pruebapcml.pcml",
+      "item": [
+        {
+          "name": "Procesar carrito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const out = pm.response.json().resultado.POUTPUT;",
+                  "pm.test(\"STATUS SUCCESS\", () => pm.expect(out.STATUS).to.eql(\"SUCCESS\"));",
+                  "pm.test(\"Total 3 + 4 = 7\", () => pm.expect(out.TOTALCARRITO).to.eql(7));",
+                  "pm.test(\"La lista vuelve con 5 posiciones\", () => pm.expect(pm.response.json().resultado.PINPUT.LISTAPROD).to.have.lengthOf(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"pruebapcml\",\n  \"parametros\": {\n    \"pInput\": {\n      \"idCliente\": 1,\n      \"nombre\": \"CARLOS\",\n      \"totalItems\": 2,\n      \"listaProd\": [\n        {\n          \"idProducto\": 10,\n          \"cantidad\": 3\n        },\n        {\n          \"idProducto\": 20,\n          \"cantidad\": 4\n        }\n      ]\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "totalItems fuera de rango (lo rechaza el programa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const out = pm.response.json().resultado.POUTPUT;",
+                  "pm.test(\"STATUS ERROR\", () => pm.expect(out.STATUS).to.eql(\"ERROR\"));",
+                  "pm.test(\"Mensaje del programa\", () => pm.expect(out.MSG).to.eql(\"totalItems debe estar entre 0 y 5\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "El conector acepta la petición; es el programa RPG el que valida totalItems y responde ERROR.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"pruebapcml\",\n  \"parametros\": {\n    \"pInput\": {\n      \"idCliente\": 1,\n      \"nombre\": \"CARLOS\",\n      \"totalItems\": 6,\n      \"listaProd\": [\n        {\n          \"idProducto\": 10,\n          \"cantidad\": 3\n        },\n        {\n          \"idProducto\": 20,\n          \"cantidad\": 4\n        }\n      ]\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CLIENTES (SQLRPGLE)",
+      "description": "Alta y consulta sobre la tabla SDSANTISH1.CLIENTES. Ejecutar en orden. PCML: cliins.pcml, clicon.pcml",
+      "item": [
+        {
+          "name": "Insertar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().resultado;",
+                  "pm.test(\"STATUS SUCCESS\", () => pm.expect(r.status).to.eql(\"SUCCESS\"));",
+                  "pm.test(\"Devuelve el ID generado\", () => pm.expect(r.id).to.be.above(0));",
+                  "pm.collectionVariables.set(\"clienteId\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "Inserta con CLIINS y guarda el ID en la variable de colección clienteId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"cliins\",\n  \"parametros\": {\n    \"nombre\": \"CARLOS\",\n    \"ciudad\": \"Lima\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Insertar cliente sin nombre (lo rechaza el programa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().resultado;",
+                  "pm.test(\"STATUS ERROR\", () => pm.expect(r.status).to.eql(\"ERROR\"));",
+                  "pm.test(\"No genera ID\", () => pm.expect(r.id).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"cliins\",\n  \"parametros\": {\n    \"nombre\": \"\",\n    \"ciudad\": \"Lima\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar por ciudad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().resultado;",
+                  "pm.test(\"STATUS SUCCESS\", () => pm.expect(r.status).to.eql(\"SUCCESS\"));",
+                  "pm.test(\"cantidad coincide con la lista\", () => pm.expect(r.clientes).to.have.lengthOf(r.cantidad));",
+                  "pm.test(\"Todos son de LIMA\", () => r.clientes.forEach(c => pm.expect(c.ciudad).to.eql(\"LIMA\")));",
+                  "const id = pm.collectionVariables.get(\"clienteId\");",
+                  "if (id) pm.test(\"Incluye el cliente insertado\", () => pm.expect(r.clientes.map(c => c.id)).to.include(Number(id)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "La ciudad se guarda en mayúsculas, así que 'lima' encuentra 'LIMA'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"clicon\",\n  \"parametros\": {\n    \"ciudad\": \"lima\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar todos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().resultado;",
+                  "pm.test(\"STATUS SUCCESS\", () => pm.expect(r.status).to.eql(\"SUCCESS\"));",
+                  "pm.test(\"Como máximo 50\", () => pm.expect(r.cantidad).to.be.at.most(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"clicon\",\n  \"parametros\": {\n    \"ciudad\": \"\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Errores de validación",
+      "description": "Casos que el conector rechaza con 400 antes de llamar al AS400. Funcionan sin conexión al AS400.",
+      "item": [
+        {
+          "name": "Body vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El body es obligatorio\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "PCML inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"No existe el PCML noexiste\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"noexiste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Nombre de PCML inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"Nombre de PCML inválido: ../application\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"../application\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Programa inexistente en el PCML",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El PCML saludo no define el programa otro, disponibles: [saludo]\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"saludo\",\n  \"programa\": \"otro\",\n  \"parametros\": {\n    \"name\": \"A\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Falta parámetro obligatorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"Falta el parámetro name\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"saludo\",\n  \"parametros\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Texto más largo que el campo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro name admite como máximo 20 caracteres\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"saludo\",\n  \"parametros\": {\n    \"name\": \"123456789012345678901\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Parámetro no definido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"Parámetros no definidos en el PCML: [EDAD]\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"saludo\",\n  \"parametros\": {\n    \"name\": \"A\",\n    \"edad\": 3\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Demasiados decimales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro num1 admite como máximo 5 decimales\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"suma\",\n  \"parametros\": {\n    \"num1\": 1.123456,\n    \"num2\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Demasiados dígitos enteros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro num1 admite como máximo 10 dígitos enteros\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"suma\",\n  \"parametros\": {\n    \"num1\": 12345678901,\n    \"num2\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Valor no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro num1 no es un packed válido: abc\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"suma\",\n  \"parametros\": {\n    \"num1\": \"abc\",\n    \"num2\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Arreglo con más elementos que count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro PINPUT.LISTAPROD admite como máximo 5 elementos\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"pruebapcml\",\n  \"parametros\": {\n    \"pInput\": {\n      \"listaProd\": [\n        {},\n        {},\n        {},\n        {},\n        {},\n        {}\n      ]\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Estructura enviada como texto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro PINPUT debe ser un objeto\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"pruebapcml\",\n  \"parametros\": {\n    \"pInput\": \"texto\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Entero fuera de rango",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje de error\", () => pm.expect(pm.response.json().error).to.eql(\"El parámetro PINPUT.IDCLIENTE debe estar entre -2147483648 y 2147483647\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/programa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "programa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pcml\": \"pruebapcml\",\n  \"parametros\": {\n    \"pInput\": {\n      \"idCliente\": 3000000000\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "clienteId",
+      "value": ""
+    }
+  ]
+}

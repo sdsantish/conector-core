@@ -1,0 +1,12 @@
+<pcml version="4.0">
+   <!-- Define la ruta absoluta del programa ejecutable en tu AS400 -->
+   <program name="saludo" path="/QSYS.LIB/SDSANTISH1.LIB/SALUDO.PGM">
+      
+      <!-- Especifica el parámetro de entrada de 20 caracteres -->
+      <data name="name" type="char" length="20" usage="input"/>
+
+      <!-- Parámetro de salida con el mensaje armado por el programa -->
+      <data name="msg" type="char" length="30" usage="output"/>
+      
+   </program>
+</pcml>

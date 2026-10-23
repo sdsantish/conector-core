@@ -1,0 +1,28 @@
+<pcml version="7.0">
+   <!-- RPG program: PRUEBAPCML  -->
+   <!-- created: 2026-10-23-21.37.52 -->
+   <!-- source: SDSANTISH1/QRPGLESRC(PRUEBAPCML) -->
+   <!-- 21 -->
+   <struct name="RESPUESTAOUTPUT_T">
+      <data name="STATUS" type="char" length="10" usage="inherit" />
+      <data name="MSG" type="char" length="30" usage="inherit" />
+      <data name="TOTALCARRITO" type="int" length="4" precision="31" usage="inherit" />
+   </struct>
+   <!-- 8 -->
+   <struct name="PRODUCTO_T">
+      <data name="IDPRODUCTO" type="int" length="4" precision="31" usage="inherit" />
+      <data name="CANTIDAD" type="int" length="4" precision="31" usage="inherit" />
+   </struct>
+   <!-- 13 -->
+   <struct name="BODYINPUT_T">
+      <data name="IDCLIENTE" type="int" length="4" precision="31" usage="inherit" />
+      <data name="NOMBRE" type="char" length="20" usage="inherit" />
+      <data name="TOTALITEMS" type="int" length="4" precision="31" usage="inherit" />
+      <data name="LISTAPROD" type="struct" struct="PRODUCTO_T" count="5" usage="inherit" />
+   </struct>
+   <!-- 28 -->
+   <program name="PRUEBAPCML" path="/QSYS.LIB/SDSANTISH1.LIB/PRUEBAPCML.PGM">
+      <data name="PINPUT" type="struct" struct="BODYINPUT_T" usage="inputoutput" />
+      <data name="POUTPUT" type="struct" struct="RESPUESTAOUTPUT_T" usage="inputoutput" />
+   </program>
+</pcml>
