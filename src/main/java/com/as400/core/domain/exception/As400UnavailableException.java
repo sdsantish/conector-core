@@ -1,7 +1,7 @@
 package com.as400.core.domain.exception;
 
 /**
- * No hay conexión disponible con el AS400: no responde o se alcanzó el máximo de conexiones simultáneas.
+ * No se puede hablar con el AS400: no responde, se cortó la conexión o el circuito de ese programa está abierto.
  */
 public class As400UnavailableException extends RuntimeException {
 
