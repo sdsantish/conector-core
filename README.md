@@ -29,6 +29,9 @@ Cliente ──JSON──▶ POST /programa ──▶ conector-core ──jt400 +
 - [Programas de ejemplo](#programas-de-ejemplo)
 - [Arquitectura](#arquitectura)
 - [Conexión con el AS400 y escalabilidad](#conexión-con-el-as400-y-escalabilidad)
+- [Resiliencia](#resiliencia)
+- [Caché de respuestas](#caché-de-respuestas)
+- [Observabilidad](#observabilidad)
 - [Configuración](#configuración)
 - [Agregar un programa](#agregar-un-programa)
 - [Pruebas](#pruebas)
@@ -105,7 +108,8 @@ Para crear los programas de ejemplo en el AS400 sigue [guide-local.md](guide-loc
 |---|---|---|
 | `400` | La petición no encaja con el PCML | `Falta el parámetro name` · `El parámetro name admite como máximo 20 caracteres` · `Parámetros no definidos en el PCML: [EDAD]` · `No existe el PCML noexiste` |
 | `502` | El programa falló en el AS400 | `El programa saludo falló: CPF4131 - ...` |
-| `503` | No hay conexión con el AS400 (caído o todas las conexiones ocupadas) | `No se pudo conectar al AS400 pub400.com: ...` |
+| `503` | El AS400 no responde, el circuito de ese PCML está abierto, o no hay conexiones libres | `No se pudo conectar al AS400 pub400.com: Connect timed out` · `Las últimas llamadas a saludo fallaron por timeout o conexión; se pausan durante 30s...` · `Las 10 conexiones al AS400 están ocupadas...` |
+| `504` | El programa superó `call-timeout` y se canceló en el AS400 | `El programa SALUDO superó el tiempo máximo de 60s y se canceló en el AS400` |
 | `500` | El PCML está mal formado o usa algo no soportado | Ver log del servicio |
 
 ---
@@ -225,10 +229,18 @@ src/main/java/com/as400/
         ├── pcml/
         │   ├── PcmlDefinitionRepository.java   Lee y cachea los .pcml (implementa ProgramDefinitionPort)
         │   └── PcmlResources.java
+        ├── cache/
+        │   ├── CachedAs400ProgramPort.java     Decorador: responde desde caché (opcional por PCML)
+        │   └── ProgramResponseCache.java       Cachés Caffeine por PCML
         └── as400/
             ├── As400LegacyAdapter.java         Llama al programa con jt400 (implementa As400ProgramPort)
             ├── As400Connection.java            Pool de conexiones y límite de concurrencia
+            ├── resilience/
+            │   ├── ResilientAs400ProgramPort.java  Decorador: bulkhead + circuit breaker + métricas
+            │   └── As400Resilience.java            Circuitos por PCML y grupos de bulkhead
             └── mappers/PcmlDocumentMapper.java Capa anticorrupción: dominio ↔ ProgramCallDocument
+
+    infrastructure/inbound/health/As400ReadinessCheck.java   Estado en /q/health/ready
 
 src/main/resources/pcml/                    Un .pcml por programa
 src/main/as400/                             Fuentes CL / RPG / SQL de los programas de ejemplo
@@ -254,6 +266,7 @@ sequenceDiagram
     U->>V: validate(definición, parámetros)
     V-->>U: entradas validadas y completas
     U->>A: call(definición, entradas)
+    Note over A: caché → bulkhead → circuit breaker
     A->>AS: conexión del pool + ProgramCallDocument
     AS-->>A: parámetros de salida
     A-->>U: salidas
@@ -262,6 +275,15 @@ sequenceDiagram
 ```
 
 La petición se valida **antes** de pedir una conexión: una petición inválida responde `400` sin ocupar el AS400.
+
+La caché y la resiliencia son **decoradores CDI** sobre el puerto `As400ProgramPort`: envuelven al adaptador de
+jt400 sin modificarlo, en este orden (de fuera hacia dentro):
+
+```
+CachedAs400ProgramPort  →  ResilientAs400ProgramPort  →  As400LegacyAdapter  →  As400Connection (pool)
+ (acierto: no sigue)        (bulkhead, circuito,           (jt400, timeout       (límite global,
+                             métricas)                       por llamada)          conexiones rotas fuera)
+```
 
 ---
 
@@ -272,9 +294,85 @@ La petición se valida **antes** de pedir una conexión: una petición inválida
   vive el servicio: si se vacía, la siguiente petición abre una conexión nueva (tarda un poco más).
 - **Límite de concurrencia**: como mucho `max-connections` llamadas simultáneas. Las demás esperan hasta
   `acquire-timeout` y, si no se libera una conexión, reciben `503` en vez de saturar el AS400.
-- **Caché**: cada PCML se lee una sola vez; cada llamada trabaja sobre una copia del documento.
+- **Conexiones rotas fuera**: una conexión que sufre un timeout o un corte se descarta del pool en vez de
+  devolverse. Las conexiones usan *keep-alive* para detectar cortes mientras esperan en el pool.
+- **Definiciones en memoria**: cada PCML se lee una sola vez; cada llamada trabaja sobre una copia del documento.
 - **Sin estado**: se pueden levantar varias instancias detrás de un balanceador. Conexiones totales al AS400 =
-  `instancias × max-connections`.
+  `instancias × max-connections`. Si el AS400 admite, por ejemplo, 150 trabajos para esta aplicación y cada
+  instancia tiene 30 conexiones, no se deben levantar más de 5 instancias.
+
+---
+
+## Resiliencia
+
+**Timeout por llamada** (`call-timeout`, 60 s por defecto). Si un programa no termina a tiempo, jt400 **termina su
+trabajo en el AS400** (`ENDJOB *IMMED`), la conexión se descarta y la petición responde `504`. Así un programa
+colgado no retiene una conexión para siempre. Abrir una conexión nueva también tiene límite (`connect-timeout`,
+10 s): si el AS400 no responde, la petición falla en ese tiempo en vez de quedarse esperando.
+
+**Circuit breaker por PCML.** Cada PCML tiene su propio circuito. Se evalúan las últimas `request-volume-threshold`
+llamadas; si fallan en una proporción mayor o igual a `failure-ratio`, el circuito se abre y durante `delay` las
+llamadas a ese PCML responden `503` de inmediato, sin tocar el AS400. Pasado ese tiempo deja pasar llamadas de prueba
+y, tras `success-threshold` éxitos, vuelve a cerrarse.
+
+Solo cuentan como fallo los **problemas del AS400**: timeouts (`504`) y errores de conexión (`503`). Los errores de
+validación (`400`) y los del propio programa (`502`, mensajes `CPF...`) no abren el circuito, para que un programa
+con un error de lógica no bloquee a los demás.
+
+**Bulkhead por grupos.** Por defecto todos los PCML comparten el pool. Para que un programa lento (p. ej. una
+consulta pesada) no ocupe todas las conexiones, se le asigna un grupo con un cupo propio menor que el pool:
+
+```properties
+as400.bulkhead.consultas.max-concurrent=3
+as400.bulkhead.consultas.pcmls=clicon,pruebapcml
+```
+
+Con un pool de 10, `clicon` y `pruebapcml` nunca usan más de 3 conexiones entre los dos; las otras 7 quedan para el
+resto. Si el grupo está lleno, sus peticiones esperan hasta `acquire-timeout` y luego responden `503`. Los PCML sin
+grupo solo están limitados por el pool.
+
+---
+
+## Caché de respuestas
+
+Opcional y **solo para los PCML que se configuren**, porque el conector no sabe qué programas modifican datos.
+Úsala solo en programas de consulta cuyos datos cambian poco (catálogos, datos maestros):
+
+```properties
+as400.cache.clicon.ttl=5m           # antigüedad máxima de una respuesta
+as400.cache.clicon.max-entries=1000 # combinaciones de parámetros guardadas (por defecto 1000)
+```
+
+- La clave es el programa más sus parámetros ya validados: solo comparten respuesta peticiones con los mismos valores.
+- Un acierto responde sin pasar por el pool, el bulkhead ni el circuito.
+- Si llegan a la vez varias peticiones iguales que no están en caché, solo una va al AS400; las demás esperan su
+  resultado.
+- Los errores no se guardan.
+- La caché es local a cada instancia. **Las respuestas pueden estar desactualizadas hasta `ttl`**: si `cliins`
+  inserta un cliente, `clicon` puede no mostrarlo hasta que venza.
+
+---
+
+## Observabilidad
+
+| Endpoint | Contenido |
+|---|---|
+| `GET /q/health/live` | El proceso está vivo |
+| `GET /q/health/ready` | Siempre `UP`, con el detalle: conexiones en uso y circuitos abiertos o en prueba |
+| `GET /q/metrics` | Métricas en formato Prometheus |
+
+El *readiness* no se pone en `DOWN` cuando el AS400 cae: sacar todas las instancias del balanceador no ayudaría
+(las peticiones fallarían igual) y el circuit breaker ya responde rápido.
+
+Métricas propias:
+
+| Métrica | Etiquetas | Qué mide |
+|---|---|---|
+| `as400_program_calls_seconds` | `pcml`, `outcome` | Duración y número de llamadas. `outcome`: `success`, `program_error`, `timeout`, `unavailable`, `circuit_open`, `busy` |
+| `as400_pool_in_use` / `as400_pool_max` / `as400_pool_waiting` | — | Conexiones en uso, máximo y peticiones esperando |
+| `as400_circuit_state` | `pcml` | 0 cerrado, 1 en prueba, 2 abierto |
+| `as400_bulkhead_in_use` | `group` | Llamadas en curso de cada grupo |
+| `cache_gets_total`, `cache_size`, ... | `cache=as400-<pcml>` | Aciertos, fallos y tamaño de cada caché |
 
 ---
 
@@ -291,6 +389,17 @@ En `src/main/resources/application.properties` o con variables de entorno:
 | `as400.pool.acquire-timeout` | `AS400_POOL_ACQUIRE_TIMEOUT` | `30s` | Espera máxima por una conexión libre |
 | `as400.pool.max-inactivity` | `AS400_POOL_MAX_INACTIVITY` | `5m` | Cierra conexiones sin uso |
 | `as400.pool.max-lifetime` | `AS400_POOL_MAX_LIFETIME` | `1h` | Renueva conexiones antiguas |
+| `as400.call-timeout` | `AS400_CALL_TIMEOUT` | `60s` | Tiempo máximo de un programa (luego `504`) |
+| `as400.connect-timeout` | `AS400_CONNECT_TIMEOUT` | `10s` | Tiempo máximo para abrir una conexión |
+| `as400.circuit-breaker.enabled` | `AS400_CIRCUIT_BREAKER_ENABLED` | `true` | Activa el circuit breaker |
+| `as400.circuit-breaker.request-volume-threshold` | `AS400_CIRCUIT_BREAKER_REQUEST_VOLUME_THRESHOLD` | `10` | Llamadas evaluadas |
+| `as400.circuit-breaker.failure-ratio` | `AS400_CIRCUIT_BREAKER_FAILURE_RATIO` | `0.5` | Proporción de fallos que abre el circuito |
+| `as400.circuit-breaker.delay` | `AS400_CIRCUIT_BREAKER_DELAY` | `30s` | Tiempo abierto antes de probar de nuevo |
+| `as400.circuit-breaker.success-threshold` | `AS400_CIRCUIT_BREAKER_SUCCESS_THRESHOLD` | `2` | Pruebas exitosas para cerrarlo |
+| `as400.bulkhead.<grupo>.max-concurrent` | — | — | Cupo del grupo (ver [Resiliencia](#resiliencia)) |
+| `as400.bulkhead.<grupo>.pcmls` | — | — | PCML del grupo, separados por comas |
+| `as400.cache.<pcml>.ttl` | — | — | Activa la caché para ese PCML (ver [Caché](#caché-de-respuestas)) |
+| `as400.cache.<pcml>.max-entries` | — | `1000` | Respuestas guardadas como máximo |
 | `quarkus.http.port` | `QUARKUS_HTTP_PORT` | `8080` | Puerto del servicio |
 
 **Empaquetar y ejecutar**
@@ -323,14 +432,15 @@ No hay que tocar código Java.
 ./mvnw test
 ```
 
-Cubren la lectura de los PCML, las reglas de validación, la escritura en el documento de jt400 y las respuestas de
-error del endpoint.
+Cubren la lectura de los PCML, las reglas de validación, la escritura en el documento de jt400, las respuestas de
+error del endpoint y, con un AS400 simulado, la caché, el circuit breaker, el bulkhead, el timeout, el health check y
+las métricas.
 
 **Manuales**: importar en Postman
 [postman/conector-core.postman_collection.json](postman/conector-core.postman_collection.json). Trae una carpeta por
-programa de ejemplo y otra con los casos de error, cada una con aserciones. La variable `baseUrl` apunta a
-`http://localhost:8080`. La carpeta *Errores de validación* funciona sin AS400; las demás necesitan los programas
-creados.
+programa de ejemplo, otra con los casos de error y otra de operación (health y métricas), cada una con aserciones.
+La variable `baseUrl` apunta a `http://localhost:8080`. Las carpetas *Errores de validación* y *Operación* funcionan
+sin AS400; las demás necesitan los programas creados.
 
 ---
 

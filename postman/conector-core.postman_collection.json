@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "conector-core",
-    "description": "Casos de prueba de POST /programa. Ver README.md. Las carpetas de programas necesitan los programas creados en el AS400 (guide-local.md); 'Errores de validación' funciona sin AS400.",
+    "description": "Casos de prueba de POST /programa. Ver README.md. Las carpetas de programas necesitan los programas creados en el AS400 (guide-local.md); 'Errores de validación' y 'Operación' funcionan sin AS400.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -985,6 +985,108 @@
                 }
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Operación",
+      "description": "Health checks y métricas del conector. Funcionan sin AS400.",
+      "item": [
+        {
+          "name": "Liveness",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/q/health/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "q",
+                "health",
+                "live"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Readiness (pool y circuitos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const as400 = pm.response.json().checks.find(c => c.name === \"as400\");",
+                  "pm.test(\"Check as400 presente\", () => pm.expect(as400).to.exist);",
+                  "pm.test(\"Informa el pool\", () => pm.expect(as400.data).to.have.property(\"pool.max\"));",
+                  "const open = Object.keys(as400.data).filter(k => k.startsWith(\"circuit.\"));",
+                  "if (open.length) console.warn(\"Circuitos abiertos o en prueba:\", open);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/q/health/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "q",
+                "health",
+                "ready"
+              ]
+            },
+            "description": "Siempre UP. En data: conexiones en uso, máximo del pool y circuitos abiertos (circuit.<pcml>)."
+          }
+        },
+        {
+          "name": "Métricas (Prometheus)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Expone las métricas del pool\", () => pm.expect(pm.response.text()).to.include(\"as400_pool_max\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/q/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "q",
+                "metrics"
+              ]
+            },
+            "description": "Métricas as400_program_calls_seconds, as400_pool_*, as400_circuit_state, as400_bulkhead_in_use y cache_*."
           }
         }
       ]
